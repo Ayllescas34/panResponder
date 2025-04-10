@@ -1,0 +1,220 @@
+import React, {useRef, useState} from 'react';
+import {
+  Animated,
+  View,
+  StyleSheet,
+  PanResponder,
+  Text,
+  useWindowDimensions,
+  Pressable,
+  Modal,
+  Dimensions
+} from 'react-native';
+
+const COLORS = ['green', 'purple', 'blue'];
+
+export const CubeMove = () => {
+  const {width, height} = useWindowDimensions();
+
+  const [dropZones, setDropZones] = useState({});
+  const [dropped, setDropped] = useState({});
+
+  const createDropZoneRef = (color) => (event) => {
+    event.target.measure((_fx, _fy, w, h, px, py) => {
+      setDropZones((prev) => ({
+        ...prev,
+        [color]: {x: px, y: py, width: w, height: h},
+      }));
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Arrastra el cubo al color correcto</Text>
+
+      <View style={styles.row}>
+        {/* Columna izquierda: cubos */}
+        <View style={styles.column}>
+          {COLORS.map((color) => (
+            <DraggableCube
+              key={color}
+              color={color}
+              dropZones={dropZones}
+              onDropSuccess={() =>
+                setDropped((prev) => ({...prev, [color]: true}))
+              }
+              disabled={!!dropped[color]}
+              screenWidth={width}
+              screenHeight={height}
+            />
+          ))}
+        </View>
+
+        {/* Columna derecha: cajas destino */}
+        <View style={styles.column}>
+          {COLORS.map((color) => (
+            <View
+              key={color}
+              style={[styles.dropZone, {backgroundColor: color}]}
+              onLayout={createDropZoneRef(color)}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const DraggableCube = ({
+    color,
+    dropZones,
+    onDropSuccess,
+    disabled,
+    screenWidth,
+    screenHeight,
+  }) => {
+    const pan = useRef(new Animated.ValueXY()).current;
+    const scale = useRef(new Animated.Value(1)).current;
+    const [feedback, setFeedback] = useState(null); // 'success' | 'error' | null
+    const [locked, setLocked] = useState(false);
+  
+    const panResponder = useRef(
+      PanResponder.create({
+        onMoveShouldSetPanResponder: () => !disabled && !locked,
+        onPanResponderMove: (_, gesture) => {
+          if (!disabled && !locked) {
+            pan.setValue({x: gesture.dx, y: gesture.dy});
+          }
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const {moveX, moveY} = gesture;
+          const targetZone = dropZones[color];
+  
+          let droppedCorrectly = false;
+  
+          for (const zoneColor in dropZones) {
+            const zone = dropZones[zoneColor];
+            if (
+              moveX > zone.x &&
+              moveX < zone.x + zone.width &&
+              moveY > zone.y &&
+              moveY < zone.y + zone.height
+            ) {
+              if (zoneColor === color) {
+                droppedCorrectly = true;
+  
+                // Mostrar feedback de acierto ✅
+                setFeedback('success');
+                setLocked(true); // Evitar moverlo después
+  
+                Animated.parallel([
+                  Animated.spring(pan, {
+                    toValue: {
+                      x: zone.x - 50,
+                      y: zone.y - 50,
+                    },
+                    useNativeDriver: false,
+                  }),
+                  Animated.sequence([
+                    Animated.spring(scale, {
+                      toValue: 1.3,
+                      useNativeDriver: false,
+                    }),
+                    Animated.spring(scale, {
+                      toValue: 1,
+                      useNativeDriver: false,
+                    }),
+                  ]),
+                ]).start(() => {
+                  onDropSuccess();
+                });
+              } else {
+                // Feedback de error ❌
+                setFeedback('error');
+                setTimeout(() => setFeedback(null), 800);
+  
+                Animated.spring(pan, {
+                  toValue: {x: 0, y: 0},
+                  useNativeDriver: false,
+                }).start();
+              }
+              return;
+            }
+          }
+  
+          if (!droppedCorrectly) {
+            setFeedback(null);
+            Animated.spring(pan, {
+              toValue: {x: 0, y: 0},
+              useNativeDriver: false,
+            }).start();
+          }
+        },
+      })
+    ).current;
+  
+    return (
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.cube,
+          {
+            backgroundColor: feedback === 'error' ? 'red' : color,
+            transform: [{translateX: pan.x}, {translateY: pan.y}, {scale}],
+            opacity: disabled ? 0.5 : 1,
+          },
+        ]}
+      >
+        {feedback === 'success' && (
+          <Text style={styles.feedbackText}>✅</Text>
+        )}
+        {feedback === 'error' && (
+          <Text style={styles.feedbackText}>❌</Text>
+        )}
+      </Animated.View>
+    );
+  };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  column: {
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    flex: 1,
+  },
+  cube: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+  },
+  dropZone: {
+    width: 100,
+    height: 100,
+    borderWidth: 2,
+    borderColor: '#333',
+    borderRadius: 10,
+  },
+  feedbackText: {
+    fontSize: 24,
+    color: 'white',
+    position: 'absolute',
+    top: 35,
+    left: 35,
+    zIndex: 1,
+  },
+});

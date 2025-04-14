@@ -18,11 +18,10 @@ export const CubeMove = () => {
   const [dropped, setDropped] = useState({});
 
   const createDropZoneRef = (color) => (event) => {
-    event.target.measureInWindow((px, py, w, h) => {
-      console.log(`DropZone ${color}:`, { x: px, y: py, width: w, height: h });
+    event.target.measure((x, y, w, h, pageX, pageY) => {
       setDropZones((prev) => ({
         ...prev,
-        [color]: { x: px, y: py, width: w, height: h },
+        [color]: { x: pageX, y: pageY, width: w, height: h },
       }));
     });
   };
@@ -74,8 +73,8 @@ const DraggableCube = ({
 }) => {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
-  const [feedback, setFeedback] = useState(null);
   const [locked, setLocked] = useState(false);
+  const hasShownAlert = useRef(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -87,22 +86,13 @@ const DraggableCube = ({
       },
       onPanResponderRelease: (_, gesture) => {
         const { moveX, moveY } = gesture;
-        console.log('Gesture coordinates:', { moveX, moveY });
 
         let droppedCorrectly = false;
 
         for (const zoneColor in dropZones) {
           const zone = dropZones[zoneColor];
-          console.log(`Checking zone ${zoneColor}:`, {
-            zoneX: zone.x,
-            zoneY: zone.y,
-            zoneWidth: zone.width,
-            zoneHeight: zone.height,
-            gestureX: moveX,
-            gestureY: moveY,
-          });
 
-          const margin = 10; // Margen reducido
+          const margin = 10;
           if (
             moveX >= zone.x - margin &&
             moveX <= zone.x + zone.width + margin &&
@@ -111,8 +101,6 @@ const DraggableCube = ({
           ) {
             if (zoneColor === color) {
               droppedCorrectly = true;
-
-              setFeedback('success');
               setLocked(true);
 
               Animated.parallel([
@@ -134,27 +122,51 @@ const DraggableCube = ({
                   }),
                 ]),
               ]).start(() => {
+                if (!hasShownAlert.current) {
+                  hasShownAlert.current = true;
+                  Alert.alert('Correcto', '¡Buen trabajo!', [{ text: 'OK' }]);
+                }
                 onDropSuccess();
               });
             } else {
-              setFeedback('error');
-              setTimeout(() => setFeedback(null), 800);
-
               Animated.spring(pan, {
                 toValue: { x: 0, y: 0 },
                 useNativeDriver: false,
-              }).start();
+              }).start(() => {
+                if (!hasShownAlert.current) {
+                  hasShownAlert.current = true;
+                  Alert.alert('Incorrecto', 'Intenta de nuevo.', [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        hasShownAlert.current = false;
+                      },
+                    },
+                  ]);
+                }
+              });
             }
             return;
           }
         }
 
         if (!droppedCorrectly) {
-          setFeedback(null);
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
-          }).start();
+          }).start(() => {
+            if (!hasShownAlert.current) {
+              hasShownAlert.current = true;
+              Alert.alert('Incorrecto', 'Intenta de nuevo.', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    hasShownAlert.current = false;
+                  },
+                },
+              ]);
+            }
+          });
         }
       },
     })
@@ -166,17 +178,12 @@ const DraggableCube = ({
       style={[
         styles.cube,
         {
-          backgroundColor: feedback === 'error' ? 'red' : color,
+          backgroundColor: color,
           transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }],
           opacity: disabled ? 0.5 : 1,
         },
       ]}
-    >
-      {feedback === 'success' &&
-        Alert.alert('Correcto', '¡Buen trabajo!', [{ text: 'OK' }])}
-      {feedback === 'error' &&
-        Alert.alert('Incorrecto', 'Intenta de nuevo.', [{ text: 'OK' }])}
-    </Animated.View>
+    />
   );
 };
 

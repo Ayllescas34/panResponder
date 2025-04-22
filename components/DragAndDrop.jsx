@@ -6,6 +6,7 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  Alert,
 } from 'react-native';
 
 // Obtiene el ancho de la pantalla del dispositivo
@@ -15,7 +16,9 @@ const { width } = Dimensions.get('window');
 const VEHICLES = [
   { id: '1', label: '🚗 Coche' },
   { id: '2', label: '🛻 Camioneta' },
-  { id: '3', label: '🏍️ Motocicleta' }, // Cambio de Bicicleta a Motocicleta
+  { id: '3', label: '🏍️ Motocicleta' }, 
+  { id: '4', label: '♿ Discapacidad' },
+  { id: '5', label: '🚫 No estacionar'},
 ];
 
 // Zonas de estacionamiento
@@ -23,6 +26,8 @@ const PARKING_ZONES = [
   { name: 'Zona de Coche', allowedId: '1', color: 'gray' }, // Coche en gris
   { name: 'Zona de Camioneta', allowedId: '2', color: 'yellow' }, // Camioneta en amarillo
   { name: 'Zona de Motocicleta', allowedId: '3', color: 'white' }, // Motocicleta en blanco
+  { name: 'Zona de Discapacidad', allowedId: '4', color: 'skyblue' }, // Discapacidad en azul
+  { name: 'Zona de No Estacionar', allowedId: '5', color: 'red' }, // No estacionar en rojo
 ];
 
 const DragAndDrop = () => {
@@ -70,6 +75,7 @@ const DragAndDrop = () => {
             if (isInside && zone.allowedId === item.id) {
               setDroppedItems((prev) => ({ ...prev, [zone.name]: item }));
               accepted = true; // El vehículo fue aceptado en la zona
+              console.log('Vehículo aceptado en la zona:', zone.name); // Mensaje de éxito
             }
           }
         });
@@ -84,6 +90,20 @@ const DragAndDrop = () => {
 
         // Si el vehículo no se colocó correctamente, muestra un mensaje en consola
         if (!accepted) {
+            const alert = ()=>{
+                Alert.alert(
+                    "Vehículo incorrecto",
+                    "El Vehículo no es correcto para esta zona",
+                    [
+                        {
+                            text: "OK",
+                        },
+                        {
+                            text: "Cancelar",
+                        }
+                    ]
+                );
+            }
           console.log('¡Vehículo incorrecto para esa zona!');
         }
       },
@@ -95,6 +115,7 @@ const DragAndDrop = () => {
   return (
     <View style={styles.container}>
       <View style={styles.dropZonesContainer}>
+      <Text style={styles.titleApp}>Arrastra a la zona correcta</Text>
         {/* Muestra las zonas de estacionamiento */}
         {PARKING_ZONES.map((zone) => (
           <View
@@ -141,6 +162,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef', // Color de fondo
     paddingTop: 40, // Espaciado superior
     paddingHorizontal: 10, // Espaciado horizontal
+  },
+  titleApp:{
+    fontSize: 26,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    justifyContent: 'center'
   },
   dropZonesContainer: {
     flexDirection: 'row', // Distribuye las zonas de estacionamiento horizontalmente

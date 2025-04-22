@@ -115,7 +115,7 @@ const DragAndDrop = () => {
   return (
     <View style={styles.container}>
       <View style={styles.dropZonesContainer}>
-      <Text style={styles.titleApp}>Arrastra a la zona correcta</Text>
+      
         {/* Muestra las zonas de estacionamiento */}
         {PARKING_ZONES.map((zone) => (
           <View
